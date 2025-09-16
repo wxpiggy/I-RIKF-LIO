@@ -38,7 +38,9 @@ namespace IESKFSlam
         imu.acceleration -= X.ba;
         imu.gyroscope -= X.bg;
         auto rotation = X.rotation.toRotationMatrix();
-        X.rotation = Eigen::Quaterniond(X.rotation.toRotationMatrix() * SO3<double>::exp((imu.gyroscope)*dt).asMatrix());
+   
+        X.rotation =  Eigen::Quaterniond(X.rotation.toRotationMatrix() * SO3<double>::exp((imu.gyroscope)*dt).asMatrix());
+        
         X.rotation.normalize();
         X.position += X.velocity*dt;
         X.velocity += (rotation*(imu.acceleration)+X.gravity)*dt;

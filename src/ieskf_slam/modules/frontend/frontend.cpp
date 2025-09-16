@@ -9,7 +9,7 @@ namespace IESKFSlam {
     FrontEnd::FrontEnd(const std::string &config_file_path, const std::string &prefix)
         : ModuleBase(config_file_path, prefix, "Front End Module") {
         float leaf_size;
-        readParam("filter_leaf_size", leaf_size, 0.5f);
+        readParam("filter_leaf_size", leaf_size, 0.4f);
         voxel_filter.setLeafSize(leaf_size, leaf_size, leaf_size);
 
         std::vector<double> extrin_v;
@@ -112,7 +112,7 @@ namespace IESKFSlam {
                 voxel_filter.filter(*filter_point_cloud_ptr);
                 invkf_ptr->update();
                 Eigen::Vector3d pos = invkf_ptr->getPosition();
-                Eigen::Quaterniond rot = Eigen::Quaterniond(invkf_ptr->getRotation());
+                Eigen::Quaterniond rot = invkf_ptr->getRotation();
                 if(trajectory_save && trajectory_save_file.is_open()){
                     trajectory_save_file << std::setprecision(15) << mg.lidar_end_time << " "
                             << pos.x() << " " << pos.y() << " " << pos.z()<< " "
@@ -120,8 +120,8 @@ namespace IESKFSlam {
                             << rot.w() << std::endl;
                 }
                 // auto x = invkf_ptr->getX();
-                map_ptr->addScan(filter_point_cloud_ptr, Eigen::Quaterniond(invkf_ptr->getRotation()),
-                                 invkf_ptr->getPosition());
+                map_ptr->addScan(filter_point_cloud_ptr, rot,
+                                 pos);
                 return true;
             }
         }
@@ -238,9 +238,9 @@ namespace IESKFSlam {
             return ieskf_ptr->getX();
         } else {
             IESKF::State18 x;
-            x.rotation = Eigen::Quaterniond(invkf_ptr->getRotation());
+            
+            x.rotation = invkf_ptr->getRotation();
             x.position = invkf_ptr->getPosition();
-
             return x;
         }
     }

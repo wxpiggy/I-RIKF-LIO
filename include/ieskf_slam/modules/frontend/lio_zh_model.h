@@ -130,10 +130,12 @@ namespace IESKFSlam{
             local_map_ptr = local_map;
         }
 
-        bool calculate(Eigen::Matrix<double,5,5> &state, Eigen::MatrixXd &Z, Eigen::MatrixXd &H) override{
-            Eigen::Matrix3d rotation_mat = state.block(0,0,3,3);
-            Eigen::Quaterniond rotation = Eigen::Quaterniond(rotation_mat);
-            Eigen::Vector3d position = state.block(0,4,3,1);
+        bool calculate(const INVKF::State18 &state, Eigen::MatrixXd &Z, Eigen::MatrixXd &H) override{
+            auto rotation = state.rotation;
+            // atuo
+            // Eigen::Matrix3d rotation_mat = state.block(0,0,3,3);
+            // Eigen::Quaterniond rotation = Eigen::Quaterniond(rotation_mat);
+            Eigen::Vector3d position = state.position;
 
             std::vector<loss_type> loss_v;
             loss_v.resize(current_cloud_ptr->size());

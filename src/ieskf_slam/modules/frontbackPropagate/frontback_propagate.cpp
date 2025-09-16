@@ -16,9 +16,9 @@ namespace IESKFSlam {
         const double &pcl_beg_time = mg.lidar_begin_time;
         const double &pcl_end_time = mg.lidar_end_time;
         auto &pcl_out = *mg.cloud.cloud_ptr;
-        auto imu_state = invkf_ptr->getX();
+        // auto imu_state = invkf_ptr->getX();
         IMUpose.clear();
-        IMUpose.emplace_back(0.0, acc_s_last, angvel_last, invkf_ptr->getVelocity(), invkf_ptr->getPosition(), Eigen::Quaterniond(invkf_ptr->getRotation()));
+        IMUpose.emplace_back(0.0, acc_s_last, angvel_last, invkf_ptr->getVelocity(), invkf_ptr->getPosition(), invkf_ptr->getRotation());
         Eigen::Vector3d angvel_avr, acc_avr, acc_imu, vel_imu, pos_imu;
         Eigen::Matrix3d R_imu;
         double dt = 0;
@@ -46,7 +46,7 @@ namespace IESKFSlam {
                 acc_s_last[i] +=  invkf_ptr->getGravity()[i];
             }
             double &&offs_t = tail.time_stamp.sec() - pcl_beg_time;
-            IMUpose.emplace_back(offs_t, acc_s_last, angvel_last, invkf_ptr->getVelocity(), invkf_ptr->getPosition(), Eigen::Quaterniond(invkf_ptr->getRotation()));
+            IMUpose.emplace_back(offs_t, acc_s_last, angvel_last, invkf_ptr->getVelocity(), invkf_ptr->getPosition(), invkf_ptr->getRotation());
         }
 
         //补充一次预测。因为imu的时间戳会小于lidar，多预测一个imu。
@@ -81,7 +81,7 @@ namespace IESKFSlam {
                 // 我这里没有自己写，照抄了一部分fast-lio的代码
                 Eigen::Vector3d T_ei(pos_imu + vel_imu * dt + 0.5 * acc_imu * dt * dt - invkf_ptr->getPosition());
                 // 坐标系转换 P = (T_C^G)^{-1}*T_B^G*P^B
-                Eigen::Vector3d P_compensate =  Eigen::Quaterniond(invkf_ptr->getRotation()).conjugate() * (R_i * P_i + T_ei);
+                Eigen::Vector3d P_compensate =  invkf_ptr->getRotation().conjugate() * (R_i * P_i + T_ei);
                 // 重新赋值
                 it_pcl->x = P_compensate(0);
                 it_pcl->y = P_compensate(1);

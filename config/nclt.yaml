@@ -1,10 +1,10 @@
 
 wrapper:
   mode: offline #offline or realtime
-  bag_path: /dataset/nclt/nclt9.bag
+  bag_path: /dataset/nclt/20120115.bag
   save_pcd: false
-  speed_factor: 20.0
-  visualization_mode: rviz #pangolin or rviz
+  speed_factor: 40.0
+  visualization_mode: pangolin #pangolin or rviz
   config_file_name: nclt.yaml
   lidar_topic: points_raw
   imu_topic: imu_raw
@@ -21,11 +21,11 @@ front_end:
   #          0.0174524,  0.9998477, 0,
   #          0,          0,         1]
   extrin_t: [0,0,0.28]
-  use_inv: 0
-  trajectory_save: true
+  use_inv: 1
+  trajectory_save: false
   trajectory_save_file: nclt9.txt
 ieskf:
   cov_gyroscope: 0.1
   cov_acceleration: 0.1
-  cov_bias_acceleration: 0.0001
-  cov_bias_gyroscope: 0.0001
+  cov_bias_acceleration: 0.001
+  cov_bias_gyroscope: 0.001
