@@ -1,11 +1,13 @@
 #include "wrapper/ros_noetic/ieskf_frontend_noetic_wrapper.h"
 
+#include <geometry_msgs/TransformStamped.h>
+#include <tf2_ros/transform_broadcaster.h>
+
+#include "ieskf_slam/CloudWithPose.h"
 #include "ieskf_slam/globaldefine.h"
 #include "ieskf_slam/tools/timer.h"
 #include "livox_ros_driver/CustomMsg.h"
 #include "livox_ros_driver/CustomPoint.h"
-#include <tf2_ros/transform_broadcaster.h>
-#include <geometry_msgs/TransformStamped.h>
 
 namespace ROSNoetic {
 
@@ -53,13 +55,11 @@ IESKFFrontEndWrapper::IESKFFrontEndWrapper(ros::NodeHandle &nh) {
 
         imu_subscriber = nh.subscribe(imu_topic, 1000, &IESKFFrontEndWrapper::imuMsgCallBack, this);
     }
-
+    cloud_pose_pub = nh.advertise<ieskf_slam::CloudWithPose>("cloud_with_pose", 10);
     run();
 }
 
-IESKFFrontEndWrapper::~IESKFFrontEndWrapper() {
-
-}
+IESKFFrontEndWrapper::~IESKFFrontEndWrapper() {}
 
 void IESKFFrontEndWrapper::aviaCallBack(const livox_ros_driver::CustomMsgPtr &msg) {
     IESKFSlam::PointCloud cloud;
@@ -117,28 +117,38 @@ void IESKFFrontEndWrapper::publishMsg() {
     cloud_msg.header.frame_id = "map";
     cloud_msg.header.stamp = ros::Time::now();
     local_map_pub.publish(cloud_msg);
+
+    ieskf_slam::CloudWithPose cloud_with_pose_msg;
+
+    cloud = front_end_ptr->readUndistortedPointCloud();
+    pcl::toROSMsg(cloud, cloud_with_pose_msg.point_cloud);
+    cloud_with_pose_msg.pose.position = psd.pose.position;
+    cloud_with_pose_msg.pose.orientation.x = X.rotation.x();
+    cloud_with_pose_msg.pose.orientation.y = X.rotation.y();
+    cloud_with_pose_msg.pose.orientation.z = X.rotation.z();
+    cloud_with_pose_msg.pose.orientation.w = X.rotation.w();
+    cloud_pose_pub.publish(cloud_with_pose_msg);
 }
 
-void IESKFFrontEndWrapper::publishTF(const IESKFSlam::IESKF::State18& state) {
+void IESKFFrontEndWrapper::publishTF(const IESKFSlam::IESKF::State18 &state) {
     static tf2_ros::TransformBroadcaster tf_broadcaster;
-    
+
     // 发布从map到base_link的变换（机器人位姿）
     geometry_msgs::TransformStamped transform_stamped;
     transform_stamped.header.stamp = ros::Time::now();
     transform_stamped.header.frame_id = "map";
     transform_stamped.child_frame_id = "base_link";
-    
+
     transform_stamped.transform.translation.x = state.position.x();
     transform_stamped.transform.translation.y = state.position.y();
     transform_stamped.transform.translation.z = state.position.z();
-    
+
     transform_stamped.transform.rotation.x = state.rotation.x();
     transform_stamped.transform.rotation.y = state.rotation.y();
     transform_stamped.transform.rotation.z = state.rotation.z();
     transform_stamped.transform.rotation.w = state.rotation.w();
-    
+
     tf_broadcaster.sendTransform(transform_stamped);
-    
 }
 
 void IESKFFrontEndWrapper::playBagToIESKF_Streaming(const std::string &bag_path, double speed_factor) {
@@ -244,6 +254,9 @@ void IESKFFrontEndWrapper::run() {
             rate.sleep();
             ros::spinOnce();
             if (front_end_ptr->track()) {
+                if (save_pcd) {
+                    savePCD();
+                }
                 publishMsg();
             }
         }
@@ -251,13 +264,19 @@ void IESKFFrontEndWrapper::run() {
 }
 
 void IESKFFrontEndWrapper::savePCD() {
-    auto &global_map = front_end_ptr->readGlobalMap();
-    if (!global_map.empty()) {
-        pcl::io::savePCDFileBinary(RESULT_DIR + "global_map.pcd", global_map);
-        ROS_INFO("Saved global map to global_map.pcd");
+    static int file_counter = 0;
+    auto &scan = front_end_ptr->readCurrentPointCloud();
+    if (!scan.empty()) {
+        // 按序号生成文件名
+        std::string filename = RESULT_DIR + "scan/" + std::to_string(file_counter) + ".pcd";
+        pcl::io::savePCDFileBinary(filename, scan);
+
+        ROS_INFO("Saved point cloud to %s", filename.c_str());
+
+        // 计数器递增
+        file_counter++;
     } else {
-        ROS_WARN("Global map is empty, nothing to save.");
+        ROS_WARN("Point cloud is empty, nothing to save.");
     }
 }
-
 }  // namespace ROSNoetic

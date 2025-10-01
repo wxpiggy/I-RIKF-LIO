@@ -1,0 +1,14 @@
+<launch>
+    <!-- 加载参数 -->
+    <rosparam command="load" file="$(find ieskf_slam)/config/hilti.yaml" />
+    
+    <!-- Pandar 到 Velodyne 格式转换节点 -->
+    <node pkg="ieskf_slam" type="pandar_to_velodyne" name="pandar_to_velodyne" output="screen" 
+          args="XYZIRT XYZIRT" />
+    
+    <!-- 主 SLAM 节点 -->
+    <node pkg="ieskf_slam" type="ieskf_frontend_node" name="ieskf_frontend_node" output="screen" /> 
+    
+    <!-- RVIZ 可视化 -->
+    <node pkg="rviz" type="rviz" name="rviz" args="-d $(find ieskf_slam)/rviz/show.rviz" /> 
+</launch>

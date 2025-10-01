@@ -1,0 +1,33 @@
+wrapper:
+  config_file_name: hilti.yaml
+  lidar_topic: /velodyne_points
+  imu_topic: /alphasense/imu
+  lidar_type: 1 # 0)avia
+  mode: realtime #offline or realtime
+  bag_path: /dataset/hilti/exp02_construction_multilevel.bag 
+  save_pcd: true
+  speed_factor: 40.0
+  time_unit: 1e-6
+  scan_line: 32
+  blind: 4
+  point_filter_num: 1
+front_end:
+  extrin_r: [1,0,0,
+            0,1,0,
+            0,0,1]
+  # extrin_r: [0.9998477, -0.0174524, 0,
+  #          0.0174524,  0.9998477, 0,
+  #          0,          0,         1]
+  extrin_t: [-0.001, -0.00855, 0.055]
+  filter_leaf_size: 0.3
+  trajectory_save: true
+  trajectory_save_file: avia.txt
+ieskf:
+  cov_gyroscope: 0.25
+  cov_acceleration: 0.5
+  cov_bias_acceleration: 0.0043
+  cov_bias_gyroscope: 0.00026
+
+local_map:
+  map_side_length_2: 100.0
+  map_resolution: 0.2

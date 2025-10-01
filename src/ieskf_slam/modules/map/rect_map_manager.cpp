@@ -7,19 +7,22 @@
 #include "ieskf_slam/type/point.h"
 #include "pcl/common/transforms.h"
 namespace IESKFSlam {
-RectMapManager::RectMapManager(const std::string &config_file_path, const std::string &prefix)
-    : ModuleBase(config_file_path, prefix, "RectMapManager") {
+MapManager::MapManager(const std::string &config_file_path, const std::string &prefix)
+    : ModuleBase(config_file_path, prefix, "MapManager") {
+
     local_map_ptr = pcl::make_shared<PCLPointCloud>();
     global_map_ptr = pcl::make_shared<PCLPointCloud>();
     kdtree_ptr = std::make_shared<KD_TREE<IESKFSlam::Point>>();
     kdtree_ptr->InitializeKDTree();
-    readParam<float>("map_side_length_2", map_side_length_2, 500);
-    readParam<float>("map_resolution", map_resolution, 0.5);
+    readParam("map_side_length_2", map_side_length_2, 1000.0f);
+    readParam("map_resolution", map_resolution, 0.5f);
+    // map_side_length_2 = 1000;
+    // map_resolution = 0.5;
 }
 
-RectMapManager::~RectMapManager() {}
-void RectMapManager::addScan(PCLPointCloudPtr curr_scan, const Eigen::Quaterniond &att_q,
-                             const Eigen::Vector3d &pos_t) {
+MapManager::~MapManager() {}
+void MapManager::addScan(PCLPointCloudPtr curr_scan, const Eigen::Quaterniond &att_q, const Eigen::Vector3d &pos_t) {
+    static int count = 1;
     PCLPointCloud scan;
     pcl::transformPointCloud(*curr_scan, scan, compositeTransform(att_q, pos_t).cast<float>());
 
@@ -80,16 +83,16 @@ void RectMapManager::addScan(PCLPointCloudPtr curr_scan, const Eigen::Quaternion
             kdtree_ptr->Add_Points(new_points, true);
         }
     }
-
-    // 全局地图直接追加，不剔除
-    *global_map_ptr += scan;
+    // if (count % 100 == 0) {
+    //     std::vector<IESKFSlam::Point, Eigen::aligned_allocator<IESKFSlam::Point>> points_history;
+    //     kdtree_ptr->acquire_removed_points(points_history);
+    //     kdtree_ptr->Delete_Points(points_history);
+    // }
+    // count++;
 }
 
-void RectMapManager::reset() { local_map_ptr->clear(); }
-PCLPointCloudConstPtr RectMapManager::getLocalMap() { return local_map_ptr; }
-PCLPointCloudConstPtr RectMapManager::getGlobalMap() { return global_map_ptr; }
-const KDTreePtr RectMapManager::readKDtree() { return kdtree_ptr; }
-
-// KDTreeConstPtr RectMapManager::readKDtree() { return kdtree_ptr; }
+void MapManager::reset() { local_map_ptr->clear(); }
+PCLPointCloudConstPtr MapManager::getLocalMap() { return local_map_ptr; }
+const KDTreePtr MapManager::readKDtree() { return kdtree_ptr; }
 
 }  // namespace IESKFSlam

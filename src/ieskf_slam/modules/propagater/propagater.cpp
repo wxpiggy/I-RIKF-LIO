@@ -1,11 +1,11 @@
 #include "ieskf_slam/math/SO3.h"
-#include "ieskf_slam/modules/frontbackPropagate/frontbackPropagate.h"
+#include "ieskf_slam/modules/propagater/propagater.h"
 
 namespace IESKFSlam {
-FrontbackPropagate::FrontbackPropagate() {}
-FrontbackPropagate::~FrontbackPropagate() {}
+Propagater::Propagater() {}
+Propagater::~Propagater() {}
 
-void FrontbackPropagate::propagate(MeasureGroup &mg, IESKF::Ptr ieskf_ptr) {
+void Propagater::propagate(MeasureGroup &mg, IESKF::Ptr ieskf_ptr) {
     std::sort(mg.cloud.cloud_ptr->points.begin(), mg.cloud.cloud_ptr->points.end(),
               [](Point x, Point y) { return x.offset_time < y.offset_time; });
     std::vector<IMUPose6d> IMUpose;

@@ -29,12 +29,11 @@ FrontEnd::FrontEnd(const std::string &config_file_path, const std::string &prefi
         extrin_r.z() = extrin_v[2];
         extrin_r.w() = extrin_v[3];
     }
+    
     readParam("extrin_t", extrin_v, std::vector<double>());
     if (extrin_v.size() == 3) {
         extrin_t << extrin_v[0], extrin_v[1], extrin_v[2];
     }
-    readParam("use_inv", use_inv, 0);
-
     readParam("trajectory_save", trajectory_save, false);
     readParam("trajectory_save_file", trajectory_save_file_name, std::string("result.txt"));
     std::cout << trajectory_save << std::endl;
@@ -42,9 +41,9 @@ FrontEnd::FrontEnd(const std::string &config_file_path, const std::string &prefi
         trajectory_save_file.open(RESULT_DIR + trajectory_save_file_name, std::ios::out);
     }
 
-    map_ptr = std::make_shared<RectMapManager>(config_file_path, "map");
+    map_ptr = std::make_shared<MapManager>(config_file_path, "local_map");
 
-    fbpropagate_ptr = std::make_shared<FrontbackPropagate>();
+    fbpropagate_ptr = std::make_shared<Propagater>();
 
     filter_point_cloud_ptr = pcl::make_shared<PCLPointCloud>();
 
@@ -95,7 +94,6 @@ bool FrontEnd::track() {
 }
 const PCLPointCloud &FrontEnd::readCurrentPointCloud() { return *filter_point_cloud_ptr; }
 const PCLPointCloud &FrontEnd::readCurrentLocalMap() { return *map_ptr->getLocalMap(); }
-const PCLPointCloud &FrontEnd::readGlobalMap() { return *map_ptr->getGlobalMap(); }
 const PCLPointCloud &FrontEnd::readUndistortedPointCloud() { return *undistorted_point_cloud_ptr; };
 bool FrontEnd::syncMeasureGroup(MeasureGroup &mg) {
     mg.imus.clear();

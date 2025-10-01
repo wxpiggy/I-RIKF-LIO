@@ -14,7 +14,6 @@ add_definitions(-DPROJ_DIR="${CMAKE_CURRENT_SOURCE_DIR}")
 add_definitions(-DMP_EN)
 add_definitions(-DMP_PROC_NUM=4)
 
-find_package(Pangolin REQUIRED)
 find_package(OpenMP QUIET)
 set(CMAKE_BUILD_TYPE "Release")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
@@ -30,7 +29,16 @@ find_package(catkin REQUIRED COMPONENTS
   message_runtime
   livox_ros_driver
 )
-find_package(PCL REQUIRED)
+add_message_files(
+  FILES
+  CloudWithPose.msg
+)
+generate_messages(
+  DEPENDENCIES
+  sensor_msgs
+  geometry_msgs
+)
+find_package(PCL REQUIRED )
 find_package(TBB REQUIRED)
 # YAML CPP
 find_package(PkgConfig REQUIRED)
@@ -46,25 +54,30 @@ catkin_package(
 include_directories(
   # "/root/catkin_ws/devel/include"
  include
+ lib/
   ${catkin_INCLUDE_DIRS}
   ${PCL_INCLUDE_DIRS}
   ${YAML_CPP_INCLUDEDIR}
+  ${CATKIN_DEVEL_PREFIX}/include
 )
 SET(IESKF_SLAM_FILE
     src/ieskf_slam/modules/frontend/frontend.cpp
+    src/ieskf_slam/modules/backend/backend.cpp
     src/ieskf_slam/modules/ieskf/ieskf.cpp
     src/ieskf_slam/modules/map/rect_map_manager.cpp
-    src/ieskf_slam/modules/frontbackPropagate/frontback_propagate.cpp
-    src/tools/pangolin_visualizer.cpp
+    src/ieskf_slam/modules/propagater/propagater.cpp
     
 
 )
 SET(NOETIC_FRONTEND_WRAPPER_FILE
     src/wrapper/ros_noetic/ieskf_frontend_noetic_wrapper.cpp
 )
+SET(NOETIC_BACKEND_WRAPPER_FILE
+    src/wrapper/ros_noetic/ieskf_backend_noetic_wrapper.cpp
+)
 # find_package(slam_viewer REQUIRED)
 SET(LIB_FILE
-# lib/scan_context/Scancontext.cpp
+lib/scan_context/Scancontext.cpp
 lib/ikd_Tree/ikd_Tree.cpp
 )
 
@@ -78,6 +91,24 @@ target_link_libraries(ieskf_frontend_node
   ${catkin_LIBRARIES}
   ${PCL_LIBRARIES}
 ${YAML_CPP_LIBRARIES}
- ${Pangolin_LIBRARIES}
  TBB::tbb
 )
+
+add_executable(ieskf_backend_node src/app/ros_noetic/ieskf_noetic_backend_node.cpp
+${NOETIC_BACKEND_WRAPPER_FILE}
+${IESKF_SLAM_FILE}
+${LIB_FILE}
+
+)
+add_dependencies(ieskf_backend_node ${PROJECT_NAME}_generate_messages_cpp)
+target_link_libraries(ieskf_backend_node
+  ${catkin_LIBRARIES}
+  ${PCL_LIBRARIES}
+  pcl_common pcl_io pcl_kdtree pcl_registration pcl_filters pcl_search
+  ${YAML_CPP_LIBRARIES}
+  # ${OpenCV_LIBRARIES}
+  # Ceres::ceres
+)
+add_executable(pandar_to_velodyne /livox_ws/src/I-RIKF-LIO/src/tools/pandar_to_velodyne.cpp)
+target_link_libraries(pandar_to_velodyne ${catkin_LIBRARIES} ${PCL_LIBRARIES} ${PYTHON_LIBRARIES})
+target_include_directories(pandar_to_velodyne PRIVATE ${PYTHON_INCLUDE_DIRS})

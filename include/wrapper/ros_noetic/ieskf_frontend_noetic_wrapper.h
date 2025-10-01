@@ -10,7 +10,6 @@
 
 #include "ieskf_slam/globaldefine.h"
 #include "ieskf_slam/modules/frontend/frontend.h"
-#include "ieskf_slam/tools/pangolin_visualizer.h"
 #include "livox_ros_driver/CustomMsg.h"
 #include "nav_msgs/Odometry.h"
 #include "nav_msgs/Path.h"
@@ -27,7 +26,6 @@ enum LIDAR_TYPE { AVIA = 0, VELO = 1 };
 class IESKFFrontEndWrapper {
    private:
     IESKFSlam::FrontEnd::Ptr front_end_ptr;
-    std::unique_ptr<PangolinVisualizer> pangolin_viz_;
     std::string config_file_name, lidar_topic, imu_topic;
 
     ros::Subscriber cloud_subscriber;
@@ -36,7 +34,7 @@ class IESKFFrontEndWrapper {
     ros::Publisher curr_cloud_pub;
     ros::Publisher path_pub;
     ros::Publisher local_map_pub;
-
+    ros::Publisher cloud_pose_pub;
     std::shared_ptr<CommonLidarProcessInterface> lidar_process_ptr;
 
     IESKFSlam::PCLPointCloud curr_cloud;
@@ -59,12 +57,11 @@ class IESKFFrontEndWrapper {
     void velodyneCallBack(const sensor_msgs::PointCloud2Ptr &msg);
     void imuMsgCallBack(const sensor_msgs::ImuPtr &msg);
     void publishMsg();
-    void publishMsgPangolin(const IESKFSlam::IESKF::State18 &state, const IESKFSlam::PCLPointCloud &cloud);
     void run();
     void playBagToIESKF_Streaming(const std::string &bag_path, double speed_factor);
-    void initializePangolinVisualization();
     void savePCD();
-    void publishTF(const IESKFSlam::IESKF::State18& state);
+    void publishTF(const IESKFSlam::IESKF::State18 &state);
+
    public:
     IESKFFrontEndWrapper(ros::NodeHandle &nh);
     ~IESKFFrontEndWrapper();

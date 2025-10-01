@@ -3,7 +3,7 @@
 #include "ieskf_slam/type/measure_group.h"
 
 namespace IESKFSlam {
-class FrontbackPropagate {
+class Propagater {
    private:
     struct IMUPose6d {
         double time;
@@ -32,8 +32,8 @@ class FrontbackPropagate {
     IMU last_imu_;
     double last_lidar_end_time_;
     IMU last_imu;
-    FrontbackPropagate();
-    ~FrontbackPropagate();
+    Propagater();
+    ~Propagater();
     void propagate(MeasureGroup &mg, IESKF::Ptr ieskf_ptr);
 };
 }  // namespace IESKFSlam

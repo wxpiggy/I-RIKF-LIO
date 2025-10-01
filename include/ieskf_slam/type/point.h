@@ -1,7 +1,7 @@
 #pragma once
-#ifndef PCL_NO_PRECOMPILE
+
 #define PCL_NO_PRECOMPILE
-#endif
+
 
 #include <pcl/pcl_base.h>
 #include <pcl/point_cloud.h>

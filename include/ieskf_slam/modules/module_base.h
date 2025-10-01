@@ -23,6 +23,7 @@ class ModuleBase {
         if (config_path != "") {
             try {
                 config_node = YAML::LoadFile(config_path);
+                std::cout << config_node << std::endl;
             } catch (YAML::Exception &e) {
                 std::cout << e.msg << std::endl;
             }
@@ -42,6 +43,7 @@ class ModuleBase {
     void readParam(const std::string &key, T &val, T default_val) {
         if (config_node[key]) {
             val = config_node[key].as<T>();
+            std::cout << key << std::endl;
         } else {
             val = default_val;
         }

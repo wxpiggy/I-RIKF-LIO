@@ -1,7 +1,7 @@
 #pragma once
 #include <fstream>
 
-#include "ieskf_slam/modules/frontbackPropagate/frontbackPropagate.h"
+#include "ieskf_slam/modules/propagater/propagater.h"
 #include "ieskf_slam/modules/frontend/lio_zh_model.h"
 #include "ieskf_slam/modules/ieskf/ieskf.h"
 #include "ieskf_slam/modules/map/rect_map_manager.h"
@@ -21,8 +21,8 @@ class FrontEnd : private ModuleBase {
     PCLPointCloud current_pointcloud;
 
     std::shared_ptr<IESKF> ieskf_ptr;
-    std::shared_ptr<RectMapManager> map_ptr;
-    std::shared_ptr<FrontbackPropagate> fbpropagate_ptr;
+    std::shared_ptr<MapManager> map_ptr;
+    std::shared_ptr<Propagater> fbpropagate_ptr;
     LIOZHModel::Ptr lio_zh_model_ptr;
     PCLPointCloudPtr undistorted_point_cloud_ptr;
     PCLPointCloudPtr filter_point_cloud_ptr;
