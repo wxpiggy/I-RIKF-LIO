@@ -1,22 +1,23 @@
 #ifndef PANGOLIN_VISUALIZER_H
 #define PANGOLIN_VISUALIZER_H
 
+#include <pangolin/pangolin.h>
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
+
 #include <Eigen/Dense>
 #include <deque>
 #include <memory>
 #include <mutex>
 #include <thread>
 #include <vector>
-#include <pangolin/pangolin.h>
 
 class PangolinVisualizer {
-public:
+   public:
     struct Pose {
         Eigen::Vector3d position;
         Eigen::Quaterniond rotation;
-        
+
         Pose();
         Pose(const Eigen::Vector3d& pos, const Eigen::Quaterniond& rot);
     };
@@ -33,39 +34,38 @@ public:
     void updateLocalMap(const pcl::PointCloud<pcl::PointXYZI>& map);
 
     // 新增主要接口：更新当前扫描和位姿（推荐使用这个）
-    void updateCurrentScan(const pcl::PointCloud<pcl::PointXYZI>& current_scan, 
-                          const Eigen::Vector3d& position, 
-                          const Eigen::Quaterniond& rotation);
+    void updateCurrentScan(const pcl::PointCloud<pcl::PointXYZI>& current_scan, const Eigen::Vector3d& position,
+                           const Eigen::Quaterniond& rotation);
 
     // 累积地图控制
     void setAccumulationParams(size_t max_points, int downsample_rate = 1);
     void clearAccumulatedMap();
 
-private:
+   private:
     // 渲染相关
     void renderLoop();
     void initializePangolin();
-    
+
     // 绘制函数
     void drawTrajectory();
     void drawPointCloudColorMode(const pcl::PointCloud<pcl::PointXYZI>& cloud);
     void drawCurrentScanHighlighted(const pcl::PointCloud<pcl::PointXYZI>& cloud);
     void drawCurrentPose();
     void drawCoordinateFrame();
-    
+
     // 点云累积
-    void accumulatePointCloud(const pcl::PointCloud<pcl::PointXYZI>& scan,
-                             const Eigen::Vector3d& position,
-                             const Eigen::Quaterniond& rotation);
-    
+    void accumulatePointCloud(const pcl::PointCloud<pcl::PointXYZI>& scan, const Eigen::Vector3d& position,
+                              const Eigen::Quaterniond& rotation);
+
     // 颜色相关
     void BuildIntensityTable();
     Eigen::Vector4d IntensityToRgbPCL(float norm_val) {
-        if (intensity_color_table_pcl_.empty()) return Eigen::Vector4d(1,1,1,1);
-        
+        if (intensity_color_table_pcl_.empty())
+            return Eigen::Vector4d(1, 1, 1, 1);
+
         int idx = static_cast<int>(norm_val * 255.0f);
         idx = std::max(0, std::min(255, idx));
-        
+
         return intensity_color_table_pcl_[idx];
     }
 
@@ -77,8 +77,8 @@ private:
     // 数据存储
     Pose current_pose_;
     std::deque<Pose> trajectory_;
-    pcl::PointCloud<pcl::PointXYZI>::Ptr current_cloud_;      // 当前帧点云
-    pcl::PointCloud<pcl::PointXYZI>::Ptr accumulated_map_;    // 累积的全局地图
+    pcl::PointCloud<pcl::PointXYZI>::Ptr current_cloud_;    // 当前帧点云
+    pcl::PointCloud<pcl::PointXYZI>::Ptr accumulated_map_;  // 累积的全局地图
 
     // 累积参数
     size_t max_accumulated_points_;
@@ -110,4 +110,4 @@ private:
     static constexpr float pose_color_[3] = {0.0f, 1.0f, 0.0f};
 };
 
-#endif // PANGOLIN_VISUALIZER_H
+#endif  // PANGOLIN_VISUALIZER_H

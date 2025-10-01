@@ -6,11 +6,11 @@
 #include <iostream>
 #include <string>
 class ModuleBase {
-private:
+   private:
     YAML::Node config_node;
     std::string name;
 
-protected:
+   protected:
     /**
      * @brief Construct a new Module Base object
      *
@@ -18,8 +18,7 @@ protected:
      * @param prefix //前缀
      * @param module_name //模块名字
      */
-    ModuleBase(const std::string &config_path, const std::string &prefix,
-               const std::string &module_name = " default") {
+    ModuleBase(const std::string &config_path, const std::string &prefix, const std::string &module_name = " default") {
         name = module_name;
         if (config_path != "") {
             try {
@@ -34,8 +33,8 @@ protected:
     }
     template <typename T>
     /**
-     * @brief 
-     * 
+     * @brief
+     *
      * @param key 键
      * @param val 值
      * @param default_val 默认值

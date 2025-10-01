@@ -55,7 +55,6 @@ SET(IESKF_SLAM_FILE
     src/ieskf_slam/modules/ieskf/ieskf.cpp
     src/ieskf_slam/modules/map/rect_map_manager.cpp
     src/ieskf_slam/modules/frontbackPropagate/frontback_propagate.cpp
-    src/ieskf_slam/modules/invkf/invkf.cpp
     src/tools/pangolin_visualizer.cpp
     
 

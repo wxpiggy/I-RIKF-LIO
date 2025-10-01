@@ -1,22 +1,23 @@
 #include "ieskf_slam/modules/map/rect_map_manager.h"
 
+#include <memory>
+#include <vector>
+
 #include "ieskf_slam/math/math.h"
 #include "ieskf_slam/type/point.h"
 #include "pcl/common/transforms.h"
-#include <memory>
-#include <vector>
 namespace IESKFSlam {
-    RectMapManager::RectMapManager(const std::string &config_file_path, const std::string &prefix)
-        : ModuleBase(config_file_path, prefix, "RectMapManager") {
-        local_map_ptr = pcl::make_shared<PCLPointCloud>();
-        global_map_ptr = pcl::make_shared<PCLPointCloud>();
-        kdtree_ptr = std::make_shared<KD_TREE<IESKFSlam::Point>>();
-        kdtree_ptr->InitializeKDTree();
-        readParam<float>("map_side_length_2",map_side_length_2,500);
-        readParam<float>("map_resolution",map_resolution,0.5);
-    }
+RectMapManager::RectMapManager(const std::string &config_file_path, const std::string &prefix)
+    : ModuleBase(config_file_path, prefix, "RectMapManager") {
+    local_map_ptr = pcl::make_shared<PCLPointCloud>();
+    global_map_ptr = pcl::make_shared<PCLPointCloud>();
+    kdtree_ptr = std::make_shared<KD_TREE<IESKFSlam::Point>>();
+    kdtree_ptr->InitializeKDTree();
+    readParam<float>("map_side_length_2", map_side_length_2, 500);
+    readParam<float>("map_resolution", map_resolution, 0.5);
+}
 
-    RectMapManager::~RectMapManager() {}
+RectMapManager::~RectMapManager() {}
 void RectMapManager::addScan(PCLPointCloudPtr curr_scan, const Eigen::Quaterniond &att_q,
                              const Eigen::Vector3d &pos_t) {
     PCLPointCloud scan;
@@ -42,10 +43,9 @@ void RectMapManager::addScan(PCLPointCloudPtr curr_scan, const Eigen::Quaternion
 
         int left = 0, right = local_map_ptr->size() - 1;
         while (left < right) {
-            while (left < right &&
-                   (fabs(local_map_ptr->points[right].x - pos_t.x()) > map_side_length_2 ||
-                    fabs(local_map_ptr->points[right].y - pos_t.y()) > map_side_length_2 ||
-                    fabs(local_map_ptr->points[right].z - pos_t.z()) > map_side_length_2)) {
+            while (left < right && (fabs(local_map_ptr->points[right].x - pos_t.x()) > map_side_length_2 ||
+                                    fabs(local_map_ptr->points[right].y - pos_t.y()) > map_side_length_2 ||
+                                    fabs(local_map_ptr->points[right].z - pos_t.z()) > map_side_length_2)) {
                 // 记录被删除点的包围盒（这里简单用点构建小立方体）
                 BoxPointType box;
                 float margin = 0.5f;  // 你可以调整边界margin大小
@@ -59,10 +59,9 @@ void RectMapManager::addScan(PCLPointCloudPtr curr_scan, const Eigen::Quaternion
 
                 right--;
             }
-            while (left < right &&
-                   (fabs(local_map_ptr->points[left].x - pos_t.x()) < map_side_length_2 &&
-                    fabs(local_map_ptr->points[left].y - pos_t.y()) < map_side_length_2 &&
-                    fabs(local_map_ptr->points[left].z - pos_t.z()) < map_side_length_2))
+            while (left < right && (fabs(local_map_ptr->points[left].x - pos_t.x()) < map_side_length_2 &&
+                                    fabs(local_map_ptr->points[left].y - pos_t.y()) < map_side_length_2 &&
+                                    fabs(local_map_ptr->points[left].z - pos_t.z()) < map_side_length_2))
                 left++;
 
             if (left < right)
@@ -86,13 +85,11 @@ void RectMapManager::addScan(PCLPointCloudPtr curr_scan, const Eigen::Quaternion
     *global_map_ptr += scan;
 }
 
-    void RectMapManager::reset() { local_map_ptr->clear(); }
-    PCLPointCloudConstPtr RectMapManager::getLocalMap() { return local_map_ptr; }
-    PCLPointCloudConstPtr RectMapManager::getGlobalMap() {
-    return global_map_ptr;
-}
-    const KDTreePtr RectMapManager::readKDtree() { return kdtree_ptr; }
+void RectMapManager::reset() { local_map_ptr->clear(); }
+PCLPointCloudConstPtr RectMapManager::getLocalMap() { return local_map_ptr; }
+PCLPointCloudConstPtr RectMapManager::getGlobalMap() { return global_map_ptr; }
+const KDTreePtr RectMapManager::readKDtree() { return kdtree_ptr; }
 
-    // KDTreeConstPtr RectMapManager::readKDtree() { return kdtree_ptr; }
+// KDTreeConstPtr RectMapManager::readKDtree() { return kdtree_ptr; }
 
 }  // namespace IESKFSlam

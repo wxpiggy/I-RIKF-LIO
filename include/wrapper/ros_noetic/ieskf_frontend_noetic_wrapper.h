@@ -1,32 +1,31 @@
 #pragma once
 
-#include "ieskf_slam/modules/frontend/frontend.h"
-#include "livox_ros_driver/CustomMsg.h"
-#include "ros/ros.h"
-#include "sensor_msgs/PointCloud2.h"
-#include "sensor_msgs/Imu.h"
-#include "nav_msgs/Odometry.h"
-#include "nav_msgs/Path.h"
-#include "wrapper/ros_noetic/lidar_process/avia_process.h"
-#include "wrapper/ros_noetic/lidar_process/velodyne_process.h"
-#include "ieskf_slam/globaldefine.h"
-#include "ieskf_slam/tools/pangolin_visualizer.h"
-#include <Eigen/src/Core/Matrix.h>
 #include <rosbag/bag.h>
 #include <rosbag/view.h>
+
+#include <Eigen/Dense>
 #include <boost/foreach.hpp>
-#include <thread>
 #include <chrono>
+#include <thread>
+
+#include "ieskf_slam/globaldefine.h"
+#include "ieskf_slam/modules/frontend/frontend.h"
+#include "ieskf_slam/tools/pangolin_visualizer.h"
+#include "livox_ros_driver/CustomMsg.h"
+#include "nav_msgs/Odometry.h"
+#include "nav_msgs/Path.h"
+#include "ros/ros.h"
+#include "sensor_msgs/Imu.h"
+#include "sensor_msgs/PointCloud2.h"
+#include "wrapper/ros_noetic/lidar_process/avia_process.h"
+#include "wrapper/ros_noetic/lidar_process/velodyne_process.h"
 
 namespace ROSNoetic {
 
-enum LIDAR_TYPE {
-    AVIA = 0,
-    VELO = 1
-};
+enum LIDAR_TYPE { AVIA = 0, VELO = 1 };
 
 class IESKFFrontEndWrapper {
-private:
+   private:
     IESKFSlam::FrontEnd::Ptr front_end_ptr;
     std::unique_ptr<PangolinVisualizer> pangolin_viz_;
     std::string config_file_name, lidar_topic, imu_topic;
@@ -40,7 +39,6 @@ private:
 
     std::shared_ptr<CommonLidarProcessInterface> lidar_process_ptr;
 
-    // 当前状态
     IESKFSlam::PCLPointCloud curr_cloud;
 
     Eigen::Quaterniond curr_q;
@@ -48,16 +46,14 @@ private:
     double time_unit = 0.0;
 
     // 离线播放参数
-    std::string mode_;        // "realtime" 或 "offline"
+    std::string mode_;  // "realtime" 或 "offline"
     std::string bag_path_;
     double speed_factor_ = 1.0;
     bool save_pcd;
     // 可视化模式 "rviz" 或 "pangolin"
-    std::string visualization_mode_ = "rviz";
     int num_scans;
     int point_filter_num;
     double blind;
-
 
     void aviaCallBack(const livox_ros_driver::CustomMsgPtr &msg);
     void velodyneCallBack(const sensor_msgs::PointCloud2Ptr &msg);
@@ -67,8 +63,9 @@ private:
     void run();
     void playBagToIESKF_Streaming(const std::string &bag_path, double speed_factor);
     void initializePangolinVisualization();
-    void savePCD();    
-public:
+    void savePCD();
+    void publishTF(const IESKFSlam::IESKF::State18& state);
+   public:
     IESKFFrontEndWrapper(ros::NodeHandle &nh);
     ~IESKFFrontEndWrapper();
 };

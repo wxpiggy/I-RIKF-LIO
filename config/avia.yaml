@@ -1,26 +1,25 @@
 wrapper:
   config_file_name: avia.yaml
-  lidar_topic: /livox/lidar
-  imu_topic: /livox/imu
+  lidar_topic: /livox/mid360/lidar
+  imu_topic: /livox/mid360/imu
   lidar_type: 0 # 0)avia
-  mode: offline #offline or realtime
+  mode: realtime #offline or realtime
   bag_path: /dataset/avia/hkust_campus_seq_00.bag
   save_pcd: true
   speed_factor: 40.0
-  visualization_mode: rviz #pangolin or rviz
   ime_unit: 1e-6
   scan_line: 6
-  blind: 4
-  point_filter_num: 3
+  blind: 1.0
+  point_filter_num: 1
 front_end:
-  # extrin_r: [1,0,0,
-  #           0,1,0,
-  #           0,0,1]
-  extrin_r: [0.9998477, -0.0174524, 0,
-           0.0174524,  0.9998477, 0,
-           0,          0,         1]
+  extrin_r: [1,0,0,
+            0,1,0,
+            0,0,1]
+  # extrin_r: [0.9998477, -0.0174524, 0,
+  #          0.0174524,  0.9998477, 0,
+  #          0,          0,         1]
   extrin_t: [0.04165,0.02326,-0.02840]
-  use_inv: 1
+  downsample_size: 0.5
   trajectory_save: true
   trajectory_save_file: avia.txt
 ieskf:

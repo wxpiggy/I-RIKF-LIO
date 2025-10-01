@@ -4,7 +4,7 @@ wrapper:
   bag_path: /dataset/nclt/20120115.bag
   save_pcd: false
   speed_factor: 40.0
-  visualization_mode: pangolin #pangolin or rviz
+  visualization_mode: rviz #pangolin or rviz
   config_file_name: nclt.yaml
   lidar_topic: points_raw
   imu_topic: imu_raw

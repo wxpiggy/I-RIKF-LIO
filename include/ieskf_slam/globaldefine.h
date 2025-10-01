@@ -6,6 +6,6 @@
 #define PROJ_DIR " "
 #endif
 
-const std::string WORKD_DIR =  PROJ_DIR;
-const std::string CONFIG_DIR = WORKD_DIR+"/config/";
-const std::string RESULT_DIR = "/results/"; 
+const std::string WORKD_DIR = PROJ_DIR;
+const std::string CONFIG_DIR = WORKD_DIR + "/config/";
+const std::string RESULT_DIR = "/results/";
