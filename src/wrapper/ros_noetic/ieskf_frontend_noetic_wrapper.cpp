@@ -32,25 +32,21 @@ IESKFFrontEndWrapper::IESKFFrontEndWrapper(ros::NodeHandle &nh) {
 
     int lidar_type = 0;
     nh.param<int>("wrapper/lidar_type", lidar_type, AVIA);
-    if (lidar_type == AVIA) {
-        lidar_process_ptr = std::make_shared<AVIAProcess>(num_scans, point_filter_num, blind);
-    } else if (lidar_type == VELO) {
-        lidar_process_ptr = std::make_shared<VelodyneProcess>(num_scans, point_filter_num, blind);
-    } else {
-        ROS_ERROR("Unsupported lidar type");
-        exit(100);
-    }
-
+    std::cout << num_scans << std::endl;
+    lidar_process = std::make_shared<LidarPreprocessor>(num_scans, point_filter_num, blind);
     curr_cloud_pub = nh.advertise<sensor_msgs::PointCloud2>("curr_cloud", 100);
     path_pub = nh.advertise<nav_msgs::Path>("path", 100);
     local_map_pub = nh.advertise<sensor_msgs::PointCloud2>("local_map", 100);
-
+    odom_pub = nh.advertise<nav_msgs::Odometry>("odometry", 100);
     if (mode_ == "realtime") {
         if (lidar_type == AVIA) {
             cloud_subscriber = nh.subscribe(lidar_topic, 1000, &IESKFFrontEndWrapper::aviaCallBack, this);
         }
         if (lidar_type == VELO) {
             cloud_subscriber = nh.subscribe(lidar_topic, 1000, &IESKFFrontEndWrapper::velodyneCallBack, this);
+        }
+        if (lidar_type == OUSTER) {
+            cloud_subscriber = nh.subscribe(lidar_topic, 1000, &IESKFFrontEndWrapper::ousterCallBack, this);
         }
 
         imu_subscriber = nh.subscribe(imu_topic, 1000, &IESKFFrontEndWrapper::imuMsgCallBack, this);
@@ -63,16 +59,20 @@ IESKFFrontEndWrapper::~IESKFFrontEndWrapper() {}
 
 void IESKFFrontEndWrapper::aviaCallBack(const livox_ros_driver::CustomMsgPtr &msg) {
     IESKFSlam::PointCloud cloud;
-    lidar_process_ptr->process(*msg, cloud, time_unit);
+    lidar_process->aviaHandler(*msg, cloud);
     front_end_ptr->addPointCloud(cloud);
 }
 
 void IESKFFrontEndWrapper::velodyneCallBack(const sensor_msgs::PointCloud2Ptr &msg) {
     IESKFSlam::PointCloud cloud;
-    lidar_process_ptr->process(*msg, cloud, time_unit);
+    lidar_process->velodyneHandler(*msg, cloud, time_unit);
     front_end_ptr->addPointCloud(cloud);
 }
-
+void IESKFFrontEndWrapper::ousterCallBack(const sensor_msgs::PointCloud2Ptr &msg) {
+    IESKFSlam::PointCloud cloud;
+    lidar_process->ousterHandler(*msg, cloud);
+    front_end_ptr->addPointCloud(cloud);
+}
 void IESKFFrontEndWrapper::imuMsgCallBack(const sensor_msgs::ImuPtr &msg) {
     IESKFSlam::IMU imu;
     imu.time_stamp.fromNsec(msg->header.stamp.toNSec());
@@ -83,11 +83,35 @@ void IESKFFrontEndWrapper::imuMsgCallBack(const sensor_msgs::ImuPtr &msg) {
 
 void IESKFFrontEndWrapper::publishMsg() {
     auto X = front_end_ptr->readState();
-    IESKFSlam::PCLPointCloud cloud = front_end_ptr->readCurrentPointCloud();
-    pcl::transformPointCloud(cloud, cloud, IESKFSlam::compositeTransform(X.rotation, X.position).cast<float>());
+    IESKFSlam::PCLPointCloud cloud = front_end_ptr->readUndistortedPointCloud();
+    // pcl::transformPointCloud(cloud, cloud, IESKFSlam::compositeTransform(X.rotation, X.position).cast<float>());
 
     // 发布TF变换
     publishTF(X);
+
+    // 发布里程计消息
+    static nav_msgs::Odometry odom_msg;
+    odom_msg.header.frame_id = "map";
+    odom_msg.header.stamp = ros::Time::now();
+    odom_msg.child_frame_id = "base_link";  // 根据实际情况调整坐标系
+
+    // 设置位置
+    odom_msg.pose.pose.position.x = X.position.x();
+    odom_msg.pose.pose.position.y = X.position.y();
+    odom_msg.pose.pose.position.z = X.position.z();
+
+    // 设置姿态
+    odom_msg.pose.pose.orientation.x = X.rotation.x();
+    odom_msg.pose.pose.orientation.y = X.rotation.y();
+    odom_msg.pose.pose.orientation.z = X.rotation.z();
+    odom_msg.pose.pose.orientation.w = X.rotation.w();
+
+    // 如果需要设置速度信息，可以在这里添加
+    // odom_msg.twist.twist.linear.x = ...;
+    // odom_msg.twist.twist.angular.z = ...;
+
+    // 发布里程计
+    odom_pub.publish(odom_msg);
 
     // 发布路径和点云
     static nav_msgs::Path path;
@@ -118,16 +142,23 @@ void IESKFFrontEndWrapper::publishMsg() {
     cloud_msg.header.stamp = ros::Time::now();
     local_map_pub.publish(cloud_msg);
 
-    ieskf_slam::CloudWithPose cloud_with_pose_msg;
-
-    cloud = front_end_ptr->readUndistortedPointCloud();
-    pcl::toROSMsg(cloud, cloud_with_pose_msg.point_cloud);
-    cloud_with_pose_msg.pose.position = psd.pose.position;
-    cloud_with_pose_msg.pose.orientation.x = X.rotation.x();
-    cloud_with_pose_msg.pose.orientation.y = X.rotation.y();
-    cloud_with_pose_msg.pose.orientation.z = X.rotation.z();
-    cloud_with_pose_msg.pose.orientation.w = X.rotation.w();
-    cloud_pose_pub.publish(cloud_with_pose_msg);
+    // double trans_dist = (X.position - last_kf_pos).norm();
+    // double rot_angle = Eigen::AngleAxisd(last_kf_rot.inverse() * X.rotation).angle();
+    // double time_gap = (ros::Time::now() - last_kf_time).toSec();
+    // // if (trans_dist > 0.1 || rot_angle > 3.0 * M_PI / 180.0 || time_gap > 0.2) {
+    // ieskf_slam::CloudWithPose cloud_with_pose_msg;
+    // cloud = front_end_ptr->readUndistortedPointCloud();
+    // pcl::toROSMsg(cloud, cloud_with_pose_msg.point_cloud);
+    // cloud_with_pose_msg.pose.position = psd.pose.position;
+    // cloud_with_pose_msg.pose.orientation.x = X.rotation.x();
+    // cloud_with_pose_msg.pose.orientation.y = X.rotation.y();
+    // cloud_with_pose_msg.pose.orientation.z = X.rotation.z();
+    // cloud_with_pose_msg.pose.orientation.w = X.rotation.w();
+    // cloud_pose_pub.publish(cloud_with_pose_msg);
+    // last_kf_pos = X.position;
+    // last_kf_rot = X.rotation;
+    // last_kf_time = ros::Time::now();
+    // }
 }
 
 void IESKFFrontEndWrapper::publishTF(const IESKFSlam::IESKF::State18 &state) {
@@ -207,7 +238,8 @@ void IESKFFrontEndWrapper::playBagToIESKF_Streaming(const std::string &bag_path,
         auto velo_msg = msg.instantiate<sensor_msgs::PointCloud2>();
         if (velo_msg) {
             IESKFSlam::PointCloud cloud;
-            lidar_process_ptr->process(*velo_msg, cloud, time_unit);
+            lidar_process->velodyneHandler(*velo_msg, cloud, time_unit);
+            // lidar_process_ptr->process(*velo_msg, cloud, time_unit);
 
             front_end_ptr->addPointCloud(cloud);
 
@@ -222,7 +254,7 @@ void IESKFFrontEndWrapper::playBagToIESKF_Streaming(const std::string &bag_path,
         auto livox_msg = msg.instantiate<livox_ros_driver::CustomMsg>();
         if (livox_msg) {
             IESKFSlam::PointCloud cloud;
-            lidar_process_ptr->process(*livox_msg, cloud, time_unit);
+            lidar_process->aviaHandler(*livox_msg, cloud);
 
             front_end_ptr->addPointCloud(cloud);
 

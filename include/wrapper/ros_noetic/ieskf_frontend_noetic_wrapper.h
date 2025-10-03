@@ -16,12 +16,13 @@
 #include "ros/ros.h"
 #include "sensor_msgs/Imu.h"
 #include "sensor_msgs/PointCloud2.h"
-#include "wrapper/ros_noetic/lidar_process/avia_process.h"
-#include "wrapper/ros_noetic/lidar_process/velodyne_process.h"
+// #include "wrapper/ros_noetic/lidar_process/avia_process.h"
+// #include "wrapper/ros_noetic/lidar_process/velodyne_process.h"
+#include "wrapper/ros_noetic/lidar_processer.h"
 
 namespace ROSNoetic {
 
-enum LIDAR_TYPE { AVIA = 0, VELO = 1 };
+enum LIDAR_TYPE { AVIA = 0, VELO = 1, OUSTER = 2 };
 
 class IESKFFrontEndWrapper {
    private:
@@ -35,8 +36,9 @@ class IESKFFrontEndWrapper {
     ros::Publisher path_pub;
     ros::Publisher local_map_pub;
     ros::Publisher cloud_pose_pub;
-    std::shared_ptr<CommonLidarProcessInterface> lidar_process_ptr;
-
+    ros::Publisher odom_pub;
+    // std::shared_ptr<CommonLidarProcessInterface> lidar_process_ptr;
+    std::shared_ptr<LidarPreprocessor> lidar_process;
     IESKFSlam::PCLPointCloud curr_cloud;
 
     Eigen::Quaterniond curr_q;
@@ -53,8 +55,13 @@ class IESKFFrontEndWrapper {
     int point_filter_num;
     double blind;
 
+    Eigen::Vector3d last_kf_pos = Eigen::Vector3d::Zero();
+    Eigen::Quaterniond last_kf_rot = Eigen::Quaterniond::Identity();
+    ros::Time last_kf_time = ros::Time(0);
+    
     void aviaCallBack(const livox_ros_driver::CustomMsgPtr &msg);
     void velodyneCallBack(const sensor_msgs::PointCloud2Ptr &msg);
+    void ousterCallBack(const sensor_msgs::PointCloud2Ptr &msg);
     void imuMsgCallBack(const sensor_msgs::ImuPtr &msg);
     void publishMsg();
     void run();

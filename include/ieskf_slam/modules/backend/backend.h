@@ -7,7 +7,7 @@
 #include "ieskf_slam/type/pointcloud.h"
 #include "ieskf_slam/type/pose.h"
 #include "scan_context/Scancontext.h"
-
+#include "ieskf_slam/modules/backend/posegraph.h"
 namespace IESKFSlam {
 class BackEnd : private ModuleBase {
    private:
@@ -20,16 +20,22 @@ class BackEnd : private ModuleBase {
 
     std::vector<PCLPointCloud> clouds;
     std::vector<BinaryEdge> binary_edges;
+    std::shared_ptr<PoseGraphOpt> pgo;
     VoxelFilter voxel_filter;
     // PoseGraphOpt pgo;
 
    public:
     using Ptr = std::shared_ptr<BackEnd>;
-
+    ~BackEnd();
     BackEnd(const std::string &config_file_path, const std::string &prefix);
     bool addFrame(PCLPointCloud &opt_map, PCLPointCloud &cloud, Pose &pose);
     bool scanRegister(Eigen::Matrix4f &match_result, int from_id, int to_id, float angle);
     std::vector<BinaryEdge> getEdge() { return binary_edges; }
     Pose getPoseWithID(int id) { return poses[id]; }
+    std::vector<Pose> getPoses(){
+        return poses;
+    }
+    bool checkKeyframe();
+    void saveResult();
 };
 }  // namespace IESKFSlam

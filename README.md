@@ -1,6 +1,6 @@
 # I-RIKF-LIO
 
-**Personal learning project** — similar to Fast-LIO2, based on Eigen library, implementing **laser-inertial odometry** using:
+**Personal learning project** — similar to Fast-LIO2, based on Eigen library, implementing **lidar-inertial odometry** using:
 
 - Iterated Right-Invariant Kalman Filter (IRIKF) — **removed** due to unstable implementation  
 - Iterated Error State Kalman Filter (IESKF, under development)

@@ -7,7 +7,7 @@ wrapper:
   bag_path: /dataset/avia/hkust_campus_seq_00.bag
   save_pcd: true
   speed_factor: 40.0
-  ime_unit: 1e-6
+  time_unit: 1e-6  # only effective for velodyne
   scan_line: 6
   blind: 1.0
   point_filter_num: 1

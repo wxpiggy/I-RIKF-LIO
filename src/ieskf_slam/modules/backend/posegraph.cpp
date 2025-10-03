@@ -1,103 +1,71 @@
-// #include "ieskf_slam/modules/pose_graph_opt/pose_graph_opt.h"
 #include "ieskf_slam/modules/backend/posegraph.h"
+#include "ieskf_slam/modules/backend/error_term.h"
+#include <ceres/ceres.h>
+namespace IESKFSlam
+{
+PoseGraphOpt::PoseGraphOpt(/* args */)
+{
+}
 
-#include <gtsam/geometry/Pose3.h>
-#include <gtsam/inference/Symbol.h>
-#include <gtsam/nonlinear/LevenbergMarquardtOptimizer.h>
-#include <gtsam/nonlinear/Marginals.h>
-#include <gtsam/nonlinear/NonlinearFactorGraph.h>
-#include <gtsam/slam/BetweenFactor.h>
-
-namespace IESKFSlam {
-
-PoseGraphOpt::PoseGraphOpt(/* args */) {}
-
-bool PoseGraphOpt::slove(std::vector<Pose>& poses, std::vector<BinaryEdge>& bes) {
+bool PoseGraphOpt::slove(std::vector<Pose> &poses, std::vector<BinaryEdge> &bes)
+{
     if (poses.size() <= 10)
         return false;
 
-    // 1. 创建因子图
-    gtsam::NonlinearFactorGraph graph;
+    // ceres 构建problem
+    ceres::Problem *problem = new ceres::Problem();
+    // 核函数, 这里就不用核函数了，当然也可以试试其他的核函数
+    ceres::LossFunction *loss_function = new ceres::HuberLoss(0.1);
+    // 四元数流形，指定四元数的求导方式
+    ceres::Manifold *quaternion_manifold = new ceres::EigenQuaternionManifold();
+    // 1 添加帧间约束
+    for (int i = 0; i < poses.size() - 1; i++)
+    {
+        Pose constraint;
+        // 计算帧间相对位姿，From k+1帧 to k帧，T_c = T_{k}^{-1}T_{k+1} ||
+        constraint.rotation = poses[i].rotation.conjugate() * poses[i + 1].rotation;
+        constraint.position = poses[i].rotation.conjugate() * (poses[i + 1].position - poses[i].position);
 
-    // 2. 创建初始值
-    gtsam::Values initial;
-
-    // 3. 添加先验因子（固定第一帧）
-    gtsam::noiseModel::Diagonal::shared_ptr priorNoise =
-        gtsam::noiseModel::Diagonal::Sigmas((gtsam::Vector(6) << 0.1, 0.1, 0.1, 0.1, 0.1, 0.1).finished());
-
-    // 将第一帧姿态转换为gtsam::Pose3
-    gtsam::Pose3 first_pose = eigenPoseToGtsam(poses[0]);
-    graph.addPrior(gtsam::symbol('x', 0), first_pose, priorNoise);
-    initial.insert(gtsam::symbol('x', 0), first_pose);
-
-    // 4. 添加帧间约束（里程计因子）
-    gtsam::noiseModel::Diagonal::shared_ptr odometryNoise =
-        gtsam::noiseModel::Diagonal::Sigmas((gtsam::Vector(6) << 0.05, 0.05, 0.05, 0.1, 0.1, 0.1).finished());
-
-    for (int i = 0; i < poses.size() - 1; i++) {
-        // 计算相对位姿：T_i_to_i+1 = T_i^{-1} * T_i+1
-        gtsam::Pose3 relative_pose = eigenPoseToGtsam(poses[i]).inverse() * eigenPoseToGtsam(poses[i + 1]);
-
-        // 添加帧间因子
-        graph.add(gtsam::BetweenFactor<gtsam::Pose3>(gtsam::symbol('x', i), gtsam::symbol('x', i + 1), relative_pose,
-                                                     odometryNoise));
-
-        // 添加初始值
-        if (i > 0) {  // 第一帧已经添加过了
-            initial.insert(gtsam::symbol('x', i), eigenPoseToGtsam(poses[i]));
-        }
-    }
-    // 添加最后一帧的初始值
-    initial.insert(gtsam::symbol('x', poses.size() - 1), eigenPoseToGtsam(poses.back()));
-
-    // 5. 添加回环约束
-    gtsam::noiseModel::Diagonal::shared_ptr loopNoise =
-        gtsam::noiseModel::Diagonal::Sigmas((gtsam::Vector(6) << 0.01, 0.01, 0.01, 0.05, 0.05, 0.05).finished());
-
-    for (auto&& be : bes) {
-        gtsam::Pose3 relative_pose = eigenPoseToGtsam(be.constraint);
-
-        graph.add(gtsam::BetweenFactor<gtsam::Pose3>(gtsam::symbol('x', be.to_vertex),
-                                                     gtsam::symbol('x', be.from_vertex), relative_pose, loopNoise));
+        // 创建残差快
+        ceres::CostFunction *cost_function = PoseGraph3dErrorTerm::Create(constraint);
+        // 添加残差块
+        problem->AddResidualBlock(cost_function, loss_function, poses[i].position.data(),
+                                  poses[i].rotation.coeffs().data(), poses[i + 1].position.data(),
+                                  poses[i + 1].rotation.coeffs().data());
+        //对于四元数，要设定使用四元数流形的求导方式：
+        problem->SetManifold(poses[i].rotation.coeffs().data(), quaternion_manifold);
+        problem->SetManifold(poses[i + 1].rotation.coeffs().data(), quaternion_manifold);
     }
 
-    // 6. 优化
-    gtsam::LevenbergMarquardtParams params;
-    params.maxIterations = 200;
-    params.relativeErrorTol = 1e-5;
-    params.absoluteErrorTol = 1e-5;
+    // 对于第一个顶点，我们希望它固定
+    problem->SetParameterBlockConstant(poses.front().rotation.coeffs().data());
+    problem->SetParameterBlockConstant(poses.front().position.data());
 
-    gtsam::LevenbergMarquardtOptimizer optimizer(graph, initial, params);
-    gtsam::Values result = optimizer.optimize();
-
-    // 7. 输出优化信息
-    std::cout << "Initial error: " << graph.error(initial) << std::endl;
-    std::cout << "Final error: " << graph.error(result) << std::endl;
-    std::cout << "Iterations: " << optimizer.iterations() << std::endl;
-
-    // 8. 更新优化后的位姿
-    for (size_t i = 0; i < poses.size(); i++) {
-        gtsam::Pose3 optimized_pose = result.at<gtsam::Pose3>(gtsam::symbol('x', i));
-        gtsamPoseToEigen(optimized_pose, poses[i]);
+    //接下来处理回环约束
+    // 比较简单
+    for (auto &&be : bes)
+    {
+        // 创建残差快
+        ceres::CostFunction *cost_function = PoseGraph3dErrorTerm::Create(be.constraint);
+        // 添加残差块
+        problem->AddResidualBlock(cost_function, loss_function, poses[be.to_vertex].position.data(),
+                                  poses[be.to_vertex].rotation.coeffs().data(), poses[be.from_vertex].position.data(),
+                                  poses[be.from_vertex].rotation.coeffs().data());
+        //对于四元数，要设定使用四元数流形的求导方式：
+        problem->SetManifold(poses[be.to_vertex].rotation.coeffs().data(), quaternion_manifold);
+        problem->SetManifold(poses[be.from_vertex].rotation.coeffs().data(), quaternion_manifold);
     }
-
-    return true;
+    // 配置求解参数
+    ceres::Solver::Options options;
+    // 最大迭代次数
+    options.max_num_iterations = 200;
+    // 线性求解方式：考虑一下这几种求解方式在应用场景和效率上各有什么不同？
+    options.linear_solver_type = ceres::SPARSE_NORMAL_CHOLESKY;
+    ceres::Solver::Summary summary;
+    // 求解
+    ceres::Solve(options, problem, &summary);
+    // 输出求解结果
+    std::cout << summary.BriefReport() << std::endl;
+    return summary.termination_type == ceres::CONVERGENCE;
 }
-
-// 辅助函数：将Eigen位姿转换为GTSAM Pose3
-gtsam::Pose3 PoseGraphOpt::eigenPoseToGtsam(const Pose& eigen_pose) {
-    gtsam::Rot3 rotation(gtsam::Quaternion(eigen_pose.rotation.w(), eigen_pose.rotation.x(), eigen_pose.rotation.y(),
-                                           eigen_pose.rotation.z()));
-    gtsam::Point3 translation(eigen_pose.position.x(), eigen_pose.position.y(), eigen_pose.position.z());
-    return gtsam::Pose3(rotation, translation);
-}
-
-// 辅助函数：将GTSAM Pose3转换为Eigen位姿
-void PoseGraphOpt::gtsamPoseToEigen(const gtsam::Pose3& gtsam_pose, Pose& eigen_pose) {
-    gtsam::Quaternion quat = gtsam_pose.rotation().toQuaternion();
-    eigen_pose.rotation = Eigen::Quaterniond(quat.w(), quat.x(), quat.y(), quat.z());
-    eigen_pose.position = Eigen::Vector3d(gtsam_pose.x(), gtsam_pose.y(), gtsam_pose.z());
-}
-
-}  // namespace IESKFSlam
+} // namespace IESKFSlam

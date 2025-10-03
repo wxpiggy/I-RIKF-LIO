@@ -24,8 +24,7 @@ struct BinaryEdge {
     Pose constraint;  // 两个顶点之间的相对位姿约束 T_from_to
 
     // 可选：约束的信息矩阵（协方差的逆）
-    Eigen::Matrix<double, 6, 6> information;
-
+    Eigen::Matrix<double, 6, 6> information = Eigen::Matrix<double, 6, 6>::Identity();
     BinaryEdge(int from = -1, int to = -1, const Pose& pose = Pose())
         : from_vertex(from), to_vertex(to), constraint(pose) {
         information.setIdentity();
